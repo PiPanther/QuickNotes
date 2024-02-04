@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:quicknotes/screens/noteEditor.dart';
@@ -17,6 +18,37 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+        drawer: Drawer(
+          backgroundColor: Colors.black,
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ListTile(
+                  title: Text(
+                    FirebaseAuth.instance.currentUser!.email!,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                ),
+                ListTile(
+                    leading: const Icon(
+                      Icons.logout,
+                      color: Colors.white,
+                    ),
+                    title: const Text(
+                      'Logout',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    onTap: () {
+                      FirebaseAuth.instance.signOut();
+                      Navigator.pop(context);
+                    })
+              ],
+            ),
+          ),
+        ),
         backgroundColor: AppStyle.bgcolor,
         appBar: AppBar(
           elevation: 0,
@@ -46,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
-                      .collection("Notes")
+                      .collection('Users')
                       .snapshots(),
                   builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -54,32 +86,33 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: CircularProgressIndicator(),
                       );
                     }
-                    if (snapshot.hasData) {
-                      return GridView(
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                        ),
-                        children: snapshot.data!.docs
-                            .map((e) => noteCard(() {
-                                  Navigator.push(context,
-                                      MaterialPageRoute(builder: (context) {
-                                    return NoteReaderScreen(doc: e);
-                                  }));
-                                }, e))
-                            .toList(),
-                      );
-                    } else {
+
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                       return const Center(
-                        child: Text(
-                          'No notes found..',
-                          style: TextStyle(color: Colors.white),
-                        ),
+                        child: Text("No notes available."),
                       );
                     }
+
+                    return GridView.builder(
+                      itemCount: snapshot.data!.docs.length,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                      ),
+                      itemBuilder: (context, index) {
+                        var userDocument = snapshot.data!.docs;
+                        // final note = userDocument.fromMap(userDocument[index].data());
+                        // var userNotes = userDocument['notes'] as List<dynamic>;
+                        var note = userDocument[index];
+
+                        return NoteReaderScreen(
+                          doc: note.data()[''],
+                        );
+                      },
+                    );
                   },
                 ),
-              )
+              ),
             ],
           ),
         ),

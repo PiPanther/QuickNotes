@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:quicknotes/styles/app_styles.dart';
 
@@ -16,6 +17,27 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   String date = DateTime.now().toString();
   TextEditingController titleController = TextEditingController();
   TextEditingController mainController = TextEditingController();
+  void addNoteToUser(User user, String title, String content, int color) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.email)
+          .update({
+        'notes': FieldValue.arrayUnion([
+          {
+            'color': color,
+            'date': DateTime.now().toString(),
+            'note-title': title,
+            'note-content': content,
+          }
+        ]),
+      });
+      Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,23 +88,15 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
           ),
         ),
         floatingActionButton: FloatingActionButton.extended(
-          onPressed: () async {
-            await FirebaseFirestore.instance.collection("Notes").add({
-              'color': colorid,
-              'date': date,
-              'note-content': mainController.text.trim(),
-              'note-title': titleController.text.trim(),
-            }).then((value) {
-              mainController.clear();
-              titleController.clear();
-              Navigator.pop(context);
-            }).catchError((error) {
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text(error.toString())));
-            });
+          onPressed: () {
+            addNoteToUser(
+                FirebaseAuth.instance.currentUser!,
+                titleController.text.trim(),
+                mainController.text.trim(),
+                colorid);
           },
-          label: Text('Save'),
-          icon: Icon(Icons.save),
+          label:const  Text('Save'),
+          icon:const  Icon(Icons.save),
         ));
   }
 }
